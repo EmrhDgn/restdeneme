@@ -1,0 +1,16 @@
+org\emrah\demorest\JwtDeneme.class
+org\emrah\demorest\LoginDatabase.class
+alien\AlienResource.class
+ogrenci\OgrenciDepolama.class
+alien\Alien.class
+org\emrah\demorest\LoginResource.class
+sinav\SinavRepository.class
+org\emrah\demorest\LoginBase.class
+alien\AlienRepository.class
+ogrenci\OgrenciSinif.class
+alien\MyResource.class
+sinav\UserData.class
+filter\PoweredByResponseFilter.class
+sinav\SinavResource.class
+sinav\Sinav.class
+ogrenci\Ogrenci.class
