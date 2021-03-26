@@ -10,12 +10,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.security.crypto.bcrypt.BCrypt;
+
+
 
 
 	public class LoginDatabase {
 		Connection con=null;
 		public LoginDatabase() {			
-			String url ="jdbc:mysql://127.0.0.1:3306/user?\" + \"autoReconnect=true&useSSL=false";
+			String url ="jdbc:mysql://localhost:3306/user?\" + \"autoReconnect=true&useSSL=false";
 			String username="root";
 			String password="123456";
 			try {
@@ -76,9 +79,6 @@ import java.util.UUID;
 			String sql="insert into login values(?,?,?,?,?)";
 			try {
 				PreparedStatement st =con.prepareStatement(sql);
-				//st.setInt(1, l1.getId());
-				//st.setString(2, l1.getF_name());//2 girilen eleman isim olarak alınıcak
-				//st.setString(3, l1.getL_name());
 				st.setInt(1, l1.getId());
 				st.setString(2, l1.getUsername());
 				st.setString(3, l1.getPassword());
@@ -94,6 +94,19 @@ import java.util.UUID;
 				System.out.println(e);
 			}
 			
+		}
+
+		public LoginBase getDuzenle(LoginBase l1) {
+			String sql="update login set password=? where id=?";
+			try {
+				PreparedStatement st1=con.prepareStatement(sql);
+				st1.setString(1, l1.getPassword());
+				st1.setInt(2, l1.getId());
+				st1.executeUpdate();
+			} catch (Exception e) {
+				System.out.println(e);
+			}
+			return l1;
 		}
 		
 		public void duzenle(LoginBase l1)
@@ -111,6 +124,49 @@ import java.util.UUID;
 				System.out.println(e);
 			}
 		}
+		public List<LoginBase> duzenlemeler() {		
+	//	public void sifreduzenle(LoginBase l1) {
+			List<LoginBase> duzens =new ArrayList<>();
+			String a;
+			String sql= ("select * from login");//hangi sql sorgusunu yapacağını seciyoruz.
+			try {
+				PreparedStatement st =con.prepareStatement(sql);
+			//	Statement st = con.createStatement();
+				ResultSet rs=st.executeQuery(sql);//sorguyu isliyoruz.
+				while(rs.next()) {
+					LoginBase l=new LoginBase();
+					a=l.getPassword();
+					String veri = BCrypt.hashpw(a, BCrypt.gensalt());
+				    l.setPassword(veri);
+					st.setString(1, l.getPassword());
+					st.setInt(2, l.getId());
+					st.executeUpdate();
+					
+					a=l.getPassword();
+					l.setId(rs.getInt(1));
+					l.setUsername(rs.getString(2));
+					l.setPassword(rs.getString(3));
+					l.setRole(rs.getString(4));
+					
+					duzens.add(l);
+						}			
+					} catch (Exception e) {
+						System.out.println(e);
+					}
+					
+					return duzens;
+				}
+			
+		/*	String sql="update login set password=? where id=?";
+			try {
+				PreparedStatement st =con.prepareStatement(sql);
+				st.setString(1, l1.getPassword());
+				st.setInt(2, l1.getId());
+				st.executeUpdate();
+			} catch (Exception e) {
+				System.out.println(e);
+			}
+		}	*/
 		public void uuidsizduzenle(LoginBase l1)
 		{
 			String sql="update login set username=?, password=? ,role=? where id=?";

@@ -3,12 +3,17 @@ package org.emrah.demorest;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Base64;
+
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.StringTokenizer;
+import java.util.UUID;
 
-//import javax.websocket.server.PathParam;
+import javax.validation.constraints.NotNull;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -19,60 +24,58 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 
-import filter.Secured;
+
+import com.sun.org.apache.bcel.internal.generic.NEW;
+
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-
-
-
-//import org.eclipse.microprofile.jwt.JsonWebToken;
-//import org.glassfish.jersey.process.internal.RequestScoped;
-
-//import org.mindrot.jbcrypt.BCrypt;
-
-//import javax.ws.rs.core.Response;
-//import org.apache.tomcat.jni.User;
-//import org.mindrot.jbcrypt.BCrypt;
 
 
 @Path("logins")
 public class LoginResource {//extends AuthenticationFilter{
 	LoginDatabase lo= new LoginDatabase();
-	public LoginBase jwt1(LoginBase l1) {
-		Instant now = Instant.now(); 
-		byte[] secret=Base64.getDecoder().decode("o40dCNjd8mmDN2+/nfHdIB2ZWta80foXqDx2roul4nw=");
-		String jwt=Jwts.builder()
-			.setSubject(l1.getUsername())
-			.setAudience(l1.getUuid())
-			.claim("1d20", new Random().nextInt(20) +1 )
-			.setIssuedAt(Date.from(now))
-			.setExpiration(Date.from(now.minus(2, ChronoUnit.MINUTES)))
-			.signWith(Keys.hmacShaKeyFor(secret))
-			.compact();	
-		System.out.println(jwt);
-		return l1;
-	}
-	
+	private static final Logger LOG= LogManager.getLogger(LoginResource.class);
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
 	public List<LoginBase> getLogins(){
 		System.out.println("gete ulaştı  ulaştı");
+		LOG.info("logins'e girdi");
 		return lo.getLogins();
+	}
+	@POST
+	@Path("sifre")
+	@Consumes({MediaType.APPLICATION_JSON,MediaType.APPLICATION_XML})
+	public LoginBase sifrelerikontrol(LoginBase l1)
+	{
+	
+		if(lo.getLogin(l1.getId()).getId()==0)
+		{
+			lo.yeni(l1);
+		}else {
+			{
+				
+				lo.duzenlemeler();
+			}
+		}
+		
+		return l1;
 	}
 	
 	@GET
 	@Path("login/{id}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public LoginBase getLogin(@PathParam("id")int id) {
-		//String data="emrah";
-	//	String veri = BCrypt.hashpw(data, BCrypt.gensalt());
-		//System.out.println(veri);
 		
 		return lo.getLogin(id);
 		
@@ -88,42 +91,34 @@ public class LoginResource {//extends AuthenticationFilter{
 		String jwt=Jwts.builder()
 			.setSubject(l1.getUsername())
 			.setAudience(l1.getUuid())
-			.claim("1d20", new Random().nextInt(20) +1 )
+			.claim("uuid", l1.getUuid())
 			.setIssuedAt(Date.from(now))
 			.setExpiration(Date.from(now.minus(2, ChronoUnit.MINUTES)))
 			.signWith(Keys.hmacShaKeyFor(secret))
 			.compact();	
 		System.out.println(jwt);
-		//UUID uuid = UUID.randomUUID();
-		//String u=uuid.toString();
-		//l1.setUuid(u);
-		try {
-			Jws<Claims> result= Jwts.parser()
-					.requireAudience(l1.getUuid())//eşleşme kontrol
-					.setAllowedClockSkewSeconds(122)
-					.setSigningKey(Keys.hmacShaKeyFor(secret))
-					.parseClaimsJws(jwt);
-			System.out.println("1d20 :"+ result.getBody().get("1d20",Integer.class));
-			System.out.println(result);
-			System.out.println();
-
-		}		
-		catch (Exception e) {
-			System.out.println("unauthorized " + e );	
-			System.out.println("token yanlis yada süresi dolmus");
-		}
-				return l1;
-	}
+			  try {
+		    	   Jws<Claims> result= Jwts.parser()
+		       			.requireAudience(l1.getUuid())//eşleşme kontrol
+		       			.setAllowedClockSkewSeconds(122)
+		       			.setSigningKey(Keys.hmacShaKeyFor(secret))
+		       			.parseClaimsJws(jwt);
+		    	   System.out.println(result);
+		    	   String u=result.getBody().getAudience();
+		    	   System.out.println("uuid " +u);
+			} catch (Exception e) {
+			  	System.out.println("unauthorized " + e );	
+		    	System.out.println("token yanlis yada süresi dolmus");
+			}
+				return l1; 
+		    }
+	
 	@PUT
 	@Path("sifre")
 	@Consumes({MediaType.APPLICATION_JSON,MediaType.APPLICATION_XML})
 	public LoginBase sifrekontrol(LoginBase l1)
 	{
 		String plaintext="yok";
-	//	String hashed=l1.getPassword();
-	//	String hashed="$2a$10$spnrhIToIrDmCexn24L5LOjiq8YBj8IcEJMqo8KkCAAmj4P3xkq/6";
-	//	String boString=l1.getPassword();
-	//	System.out.println(boString);
 		if(lo.getLogin(l1.getId()).getId()==0)
 		{
 			lo.yeni(l1);
@@ -136,8 +131,10 @@ public class LoginResource {//extends AuthenticationFilter{
 				boolean bool=BCrypt.checkpw(plaintext, hashed);
 				if(bool==true) {
 					System.out.println("sifre dogru");
+					LOG.info("Sifre dogru");
 					}else {
 					System.out.println("sifre yanlıs");
+					LOG.error("Sifre yanlıs");
 					}
 				lo.duzenle(l1);
 			}
@@ -168,17 +165,8 @@ public class LoginResource {//extends AuthenticationFilter{
 					.setAllowedClockSkewSeconds(122222)
 					.setSigningKey(Keys.hmacShaKeyFor(secret))
 					.parseClaimsJws(jwt);
-		/*	Claims claims;
-	    
-	        claims = Jwts.parser()
-	        		.requireAudience(l1.getUuid())
-	        		.setSigningKey(Keys.hmacShaKeyFor(secret))
-	                .parseClaimsJws(jwt)
-	               .getBody();*/
 			System.out.println("1d20 :"+ l1.getUuid());
 			System.out.println(result);
-			//System.out.println();
-
 		}		
 		catch (Exception e) {
 			System.out.println("unauthorized " + e );	
@@ -186,8 +174,20 @@ public class LoginResource {//extends AuthenticationFilter{
 		}
 		return l1;
 	}
+	@PUT
+	@Path("duzenle")
+	@Consumes({MediaType.APPLICATION_JSON,MediaType.APPLICATION_XML})
+	public LoginBase getDuzen(LoginBase l1) {
+				String data=l1.getPassword();
+				String veri = BCrypt.hashpw(data, BCrypt.gensalt());
+				l1.setPassword(veri);
+				lo.getDuzenle(l1);
+				return l1;			
+	}
+			
+
 	@POST
-	@Secured
+
 	@Path("register")
 	@Consumes({MediaType.APPLICATION_JSON,MediaType.APPLICATION_XML})
 	public LoginBase sifrele(LoginBase l1)
@@ -199,11 +199,11 @@ public class LoginResource {//extends AuthenticationFilter{
 	 //	l1.setPassword(veri);
 		return l1;
 	}
-	@PUT//bilgi eklemek için kullanıyoruz yeni bir body oluştuyuruz.
+	@PUT
 	@Path("login")
-	@Secured
+
 	@Consumes({MediaType.APPLICATION_JSON,MediaType.APPLICATION_XML})
-	public LoginBase duzenle(LoginBase l1)//id si null sa yeni eleman eşleşme varsa değişim olur.
+	public LoginBase duzenle(LoginBase l1)
 	{
 		System.out.println(l1);
 		if(lo.getLogin(l1.getId()).getId()==0)
@@ -220,9 +220,9 @@ public class LoginResource {//extends AuthenticationFilter{
 		
 		return l1;
 	}
-	@PUT//bilgi eklemek için kullanıyoruz yeni bir body oluştuyuruz.
+	@PUT
 	@Path("uyoklogin")
-	@Secured
+
 	@Consumes({MediaType.APPLICATION_JSON,MediaType.APPLICATION_XML})
 	public LoginBase uuidsizduzenle(LoginBase l1)//id si null sa yeni eleman eşleşme varsa değişim olur.
 	{
@@ -242,7 +242,7 @@ public class LoginResource {//extends AuthenticationFilter{
 		return l1;
 	}
 	@DELETE
-	@Path("login/{id}")//gette oldugu gibi şeçtiğimiz id yi siliyoruz
+	@Path("login/{id}")
 	public LoginBase sil(@PathParam("id") int id)
 	{
 		LoginBase l=lo.getLogin(id);
@@ -254,18 +254,47 @@ public class LoginResource {//extends AuthenticationFilter{
 	}
 }
 
+/*
+@POST
+@Path("sifre")
+@Consumes({MediaType.APPLICATION_JSON,MediaType.APPLICATION_XML})
+public LoginBase sifrelerikontrol(LoginBase l1)
+{
+	//String plaintext="yok";
+	if(lo.getLogin(l1.getId()).getId()==0)
+	{
+		lo.yeni(l1);
+	}else {
+		{
+			/*String data=l1.getPassword();
+			String veri = BCrypt.hashpw(data, BCrypt.gensalt());
+		    l1.setPassword(veri);
+			String hashed=l1.getPassword();
+			boolean bool=BCrypt.checkpw(plaintext, hashed);
+			if(bool==true) {
+				System.out.println("sifre dogru");
+				}else {
+				System.out.println("sifre yanlıs");
+				}*//*
+			lo.duzenlemeler();
+		}
+	}
+	
+	return l1;
+}*/
 
 
+//import filter.Base64Util;
+//import filter.Secured;
+//import javax.websocket.server.PathParam;
+//import org.eclipse.microprofile.jwt.JsonWebToken;
+//import org.glassfish.jersey.process.internal.RequestScoped;
 
+//import org.mindrot.jbcrypt.BCrypt;
 
-
-
-
-
-
-
-
-
+//import javax.ws.rs.core.Response;
+//import org.apache.tomcat.jni.User;
+//import org.mindrot.jbcrypt.BCrypt;
 
 
 
